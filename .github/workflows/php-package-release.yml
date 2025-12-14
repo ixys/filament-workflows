@@ -13,7 +13,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  artifacts: write
   packages: write  # nécessaire pour GitHub Packages / GHCR
 
 env:
