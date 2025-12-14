@@ -3,12 +3,13 @@ name: PHP Package CI
 on:
   push:
     branches:
-      - main
       - develop
       - bug/*
     tags:
       - 'v*.*.*'
   pull_request:
+    branches:
+      - develop
   workflow_dispatch:
 
 permissions:

@@ -166,43 +166,17 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      - name: Check if Packagist secrets are configured
-        id: check-secrets
-        run: |
-          if [ -n "${{ secrets.PACKAGIST_USERNAME }}" ] && [ -n "${{ secrets.PACKAGIST_API_TOKEN }}" ]; then
-            echo "secrets_available=true" >> $GITHUB_OUTPUT
-            echo "✅ Packagist secrets are configured"
-          else
-            echo "secrets_available=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Packagist secrets not configured - skipping Packagist update"
-          fi
-
       - name: Trigger Packagist update
-        if: steps.check-secrets.outputs.secrets_available == 'true'
         run: |
-          echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
-
-          # Note: Packagist API specifically requires credentials as query parameters
-          # (not as headers or POST body). GitHub Actions automatically masks these
-          # secrets in all log outputs, making this secure.
-          # See: https://packagist.org/about#how-to-update-packages
-          
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
-            "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "repository[url]=https://github.com/${{ github.repository }}")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n-1)
-          
-          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
-            echo "✅ Packagist updated successfully"
-            echo "$BODY"
-          else
-            echo "⚠️ Packagist update returned HTTP $HTTP_CODE"
-            echo "$BODY"
+          if [ -z "${{ secrets.PACKAGIST_USERNAME }}" ] || [ -z "${{ secrets.PACKAGIST_API_TOKEN }}" ]; then
+            echo "Secrets PACKAGIST_USERNAME ou PACKAGIST_API_TOKEN manquants."
             exit 1
           fi
+          
+          echo "Mise à jour Packagist pour ${{ env.PACKAGIST_PACKAGE }}..."
+          
+          curl -sS -X PUT "https://packagist.org/packages/${{ env.PACKAGIST_PACKAGE }}" \
+            -d "username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}&update=1&autoUpdated=1"
 
   publish-github-packages:
     name: Publish to GitHub Packages (GHCR)
