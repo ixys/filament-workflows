@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Inputs
 PACKAGE_GLOB=${1:-}
 GITHUB_TOKEN_INPUT=${2:-}
 RETRIES_INPUT=${3:-3}

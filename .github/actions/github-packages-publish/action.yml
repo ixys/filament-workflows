@@ -32,7 +32,7 @@ runs:
       run: |
         set -euo pipefail
         # call the extracted script with inputs as args (allows local testing)
-        bash "${{ github.action_path }}/.github/actions/github-packages-publish/publish.sh" \
+        bash "${{ github.action_path }}/publish.sh" \
           "${{ inputs.package_zip_path }}" \
           "${{ inputs.github_token }}" \
           "${{ inputs.retries }}" \
