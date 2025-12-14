@@ -168,19 +168,19 @@ jobs:
         echo "sig_file=$SIG_FILE" >> $GITHUB_OUTPUT
         echo "sig_created=$SIG_CREATED" >> $GITHUB_OUTPUT
 
-    - name: Upload release artifact: package zip
+    - name: Upload release artifact (package zip)
       uses: actions/upload-artifact@v3
       with:
         name: package-zip
         path: ${{ steps.certify.outputs.zip_file }}
 
-    - name: Upload release artifact: checksum
+    - name: Upload release artifact (checksum)
       uses: actions/upload-artifact@v3
       with:
         name: package-sha256
         path: ${{ steps.certify.outputs.sha_file }}
 
-    - name: Upload release artifact: signature (if created)
+    - name: Upload release artifact (signature if created)
       if: ${{ steps.certify.outputs.sig_created == 'true' }}
       uses: actions/upload-artifact@v3
       with:
