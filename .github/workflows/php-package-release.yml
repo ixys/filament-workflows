@@ -118,13 +118,14 @@ jobs:
 
           echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
           echo "ZIP_PATH=dist/${ZIP_NAME}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
           echo "✅ Release package created: dist/${ZIP_NAME}"
           ls -lh "dist/${ZIP_NAME}"
 
       - name: Upload artifact (workflow only)
         uses: actions/upload-artifact@v4
         with:
-          name: filament-workflows-${{ github.ref_name }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: dist/*.zip
           retention-days: 90
           if-no-files-found: error
@@ -141,10 +142,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare artifact name
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
+
       - name: Download built artifact
         uses: actions/download-artifact@v4
         with:
-          name: filament-workflows-${{ github.ref_name }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: dist
 
       - name: Create GitHub Release
@@ -208,10 +214,15 @@ jobs:
       packages: write
 
     steps:
+      - name: Prepare artifact name
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
+
       - name: Download built artifact
         uses: actions/download-artifact@v4
         with:
-          name: filament-workflows-${{ github.ref_name }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: dist
 
       - name: Setup ORAS

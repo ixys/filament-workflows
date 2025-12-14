@@ -113,9 +113,15 @@ jobs:
           ls -lh "dist/${ZIP_NAME}"
 
       - name: Upload package artifact
+        run: |
+          # Sanitize ref name for artifact name
+          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/\//-/g')
+          echo "SAFE_REF_NAME=${SAFE_REF_NAME}" >> $GITHUB_ENV
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: filament-workflows-${{ github.ref_name }}
+          name: filament-workflows-${{ env.SAFE_REF_NAME }}
           path: dist/*.zip
           retention-days: 30
           if-no-files-found: error
