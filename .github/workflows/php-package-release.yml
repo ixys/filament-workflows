@@ -171,68 +171,45 @@ jobs:
         prerelease: false
 
     - name: Publish to GitHub Packages (Composer)
-      if: always()
+      uses: ./.github/actions/github-packages-publish
+      with:
+        package_zip_path: 'dist/*.zip'
+        # github_token left empty to allow action to use runner's GITHUB_TOKEN by default
+        retries: '3'
+        backoff_seconds: '5'
+        repository_owner: ${{ github.repository_owner }}
+        repository: ${{ github.repository }}
+
+    - name: Prepare Packagist flag
+      id: packagist_flag
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+        PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
       run: |
         set -euo pipefail
-        ZIP_FILE=$(ls dist/*.zip | head -n1)
-        if [ -z "$ZIP_FILE" ]; then
-          echo "No archive found to publish to GitHub Packages" >&2
-          exit 1
-        fi
-
-        PACKAGE_NAME=$(jq -r .name composer.json)
-        PACKAGE_VERSION=$(jq -r .version composer.json)
-        PACKAGE_DESC=$(jq -r .description composer.json // empty)
-        OWNER=${GITHUB_REPOSITORY_OWNER}
-
-        echo "Preparing metadata for package $PACKAGE_NAME@$PACKAGE_VERSION"
-        cat > /tmp/metadata.json <<EOF
-        {
-          "name": "$PACKAGE_NAME",
-          "package_type": "composer",
-          "version": "$PACKAGE_VERSION",
-          "description": "$PACKAGE_DESC"
-        }
-        EOF
-
-        # URL-encode package name for path
-        ENCODED_NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read().strip(), safe=''))" <<< "$PACKAGE_NAME")
-
-        # Detect owner type (Organization or User)
-        OWNER_INFO=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/users/$OWNER")
-        OWNER_TYPE=$(echo "$OWNER_INFO" | jq -r .type // "User")
-        echo "Repository owner: $OWNER (type: $OWNER_TYPE)"
-
-        if [ "$OWNER_TYPE" = "Organization" ]; then
-          API_URL="https://api.github.com/orgs/$OWNER/packages/composer/$ENCODED_NAME/versions"
+        # Determine if Packagist credentials are available
+        packagist_present=false
+        packagist_method=none
+        if [ -n "${PACKAGIST_TOKEN:-}" ]; then
+          packagist_present=true
+          packagist_method=token
+          echo "Detected Packagist auth method: token (using PACKAGIST_TOKEN)"
+        elif [ -n "${PACKAGIST_USERNAME:-}" ] && [ -n "${PACKAGIST_API_TOKEN:-}" ]; then
+          packagist_present=true
+          packagist_method=username_api_token
+          echo "Detected Packagist auth method: username+api_token (using PACKAGIST_USERNAME & PACKAGIST_API_TOKEN)"
         else
-          API_URL="https://api.github.com/user/packages/composer/$ENCODED_NAME/versions"
+          echo "No Packagist credentials found; skipping Packagist notification"
         fi
-
-        echo "Uploading package to $API_URL"
-
-        HTTP_STATUS=$(curl -s -o /tmp/ghpkg_resp.txt -w "%{http_code}" -X POST \
-          -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          -F "metadata=@/tmp/metadata.json;type=application/json" \
-          -F "package=@$ZIP_FILE;type=application/zip" \
-          "$API_URL")
-
-        echo "GitHub Packages response (status $HTTP_STATUS):"
-        cat /tmp/ghpkg_resp.txt || true
-        if [ "$HTTP_STATUS" -ge 400 ]; then
-          echo "Publish to GitHub Packages failed with HTTP status $HTTP_STATUS" >&2
-          exit 1
-        fi
-
-        echo "Published $PACKAGE_NAME@$PACKAGE_VERSION to GitHub Packages successfully."
+        echo "packagist_present=$packagist_present" >> $GITHUB_OUTPUT
+        echo "packagist_method=$packagist_method" >> $GITHUB_OUTPUT
 
     - name: Notify Packagist (using local action)
-      if: ${{ secrets.PACKAGIST_USERNAME != '' && secrets.PACKAGIST_API_TOKEN != '' }}
+      if: ${{ steps.packagist_flag.outputs.packagist_present == 'true' }}
       uses: ./.github/actions/packagist-update
       with:
+        token: ${{ secrets.PACKAGIST_TOKEN }}
         username: ${{ secrets.PACKAGIST_USERNAME }}
         api_token: ${{ secrets.PACKAGIST_API_TOKEN }}
         repository: ${{ github.repository }}

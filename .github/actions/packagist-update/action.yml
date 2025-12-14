@@ -11,26 +11,46 @@ runs:
         REPO_URL="https://github.com/${{ inputs.repository }}"
         echo "Notifying Packagist for $REPO_URL"
 
-        if [ -n "${{ inputs.token }}" ]; then
-          # Use Authorization Bearer token (useful for Packagist.com or token-based APIs)
-          echo "Using PACKAGIST_TOKEN (Authorization: Bearer)"
-          HTTP_STATUS=$(curl -s -o /tmp/packagist_resp.txt -w "%{http_code}" -X POST "https://packagist.org/api/update-package" \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            -d "repository[url]=$REPO_URL")
-        elif [ -n "${{ inputs.username }}" ] && [ -n "${{ inputs.api_token }}" ]; then
-          echo "Using PACKAGIST_USERNAME & PACKAGIST_API_TOKEN"
-          HTTP_STATUS=$(curl -s -o /tmp/packagist_resp.txt -w "%{http_code}" -X POST "https://packagist.org/api/update-package?username=${{ inputs.username }}&apiToken=${{ inputs.api_token }}" -d "repository[url]=$REPO_URL")
-        else
-          echo "ERROR: either 'token' or both 'username' and 'api_token' must be provided" >&2
-          exit 1
-        fi
+        MAX_RETRIES=${{ inputs.retries }}
+        BACKOFF=${{ inputs.backoff_seconds }}
+        ATTEMPT=1
 
-        echo "Packagist response (status $HTTP_STATUS):"
-        cat /tmp/packagist_resp.txt || true
-        if [ "$HTTP_STATUS" -ge 400 ]; then
+        while true; do
+          echo "Attempt #$ATTEMPT"
+          if [ -n "${{ inputs.token }}" ]; then
+            # Use Authorization Bearer token
+            echo "Using PACKAGIST_TOKEN (Authorization: Bearer)"
+            HTTP_STATUS=$(curl -s -o /tmp/packagist_resp.txt -w "%{http_code}" -X POST "https://packagist.org/api/update-package" \
+              -H "Authorization: Bearer ${{ inputs.token }}" \
+              -d "repository[url]=$REPO_URL")
+          elif [ -n "${{ inputs.username }}" ] && [ -n "${{ inputs.api_token }}" ]; then
+            echo "Using PACKAGIST_USERNAME & PACKAGIST_API_TOKEN"
+            HTTP_STATUS=$(curl -s -o /tmp/packagist_resp.txt -w "%{http_code}" -X POST "https://packagist.org/api/update-package?username=${{ inputs.username }}&apiToken=${{ inputs.api_token }}" -d "repository[url]=$REPO_URL")
+          else
+            echo "ERROR: either 'token' or both 'username' and 'api_token' must be provided" >&2
+            exit 1
+          fi
+
+          echo "Packagist response (status $HTTP_STATUS):"
+          cat /tmp/packagist_resp.txt || true
+
+          if [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "Packagist update succeeded (status $HTTP_STATUS)"
+            break
+          fi
+
+          # If 429 (rate limit) or 5xx, consider retrying
+          if { [ "$HTTP_STATUS" -eq 429 ] || [ "$HTTP_STATUS" -ge 500 ]; } && [ "$ATTEMPT" -lt "$MAX_RETRIES" ]; then
+            SLEEP_SECONDS=$(( BACKOFF * (2 ** (ATTEMPT - 1)) ))
+            echo "Transient error (status $HTTP_STATUS). Retrying after ${SLEEP_SECONDS}s..."
+            sleep $SLEEP_SECONDS
+            ATTEMPT=$((ATTEMPT + 1))
+            continue
+          fi
+
           echo "Packagist update failed with HTTP status $HTTP_STATUS" >&2
           exit 1
-        fi
+        done
 inputs:
   token:
     description: 'Packagist token (preferred). If provided, will be used as an Authorization: Bearer header.'
@@ -44,3 +64,11 @@ inputs:
   repository:
     description: 'owner/repo, e.g. ixys/filament-workflows'
     required: true
+  retries:
+    description: 'Number of attempts to try on transient errors (429/5xx)'
+    required: false
+    default: 3
+  backoff_seconds:
+    description: 'Initial backoff in seconds for retries; will exponential backoff: backoff * 2^(attempt-1)'
+    required: false
+    default: 5
