@@ -1,0 +1,119 @@
+name: PHP Package CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - bug/*
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    name: Run tests (PHP package)
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, intl, pdo, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor
+            ~/.composer/cache
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run tests
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            echo "Running tests with PHPUnit..."
+            vendor/bin/phpunit
+          elif [ -f vendor/bin/pest ]; then
+            echo "Running tests with Pest..."
+            vendor/bin/pest
+          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test\s"; then
+            echo "Running tests with composer test..."
+            composer test
+          else
+            echo "⚠️ No test configuration found (phpunit, pest, or composer test script)."
+            echo "Skipping tests..."
+            exit 0
+          fi
+
+  build-package:
+    name: Build package artifact
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl
+
+      - name: Install production dependencies
+        run: |
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare package archive
+        run: |
+          mkdir -p dist
+          
+          # Sanitize ref name for use in filenames (replace invalid characters)
+          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/[\/:]/-/g' | sed 's/[*?<>|]/_/g')
+          echo "SAFE_REF_NAME=${SAFE_REF_NAME}" >> $GITHUB_ENV
+          ZIP_NAME="filament-workflows-${SAFE_REF_NAME}.zip"
+          
+          echo "Creating package: ${ZIP_NAME}"
+
+          # Create archive with production dependencies included
+          zip -r "dist/${ZIP_NAME}" . \
+            -x ".git/*" \
+               ".github/*" \
+               "tests/*" \
+               "dist/*" \
+               "node_modules/*" \
+               ".gitignore" \
+               ".gitattributes" \
+               "*.log"
+
+          echo "✅ Package created: dist/${ZIP_NAME}"
+          ls -lh "dist/${ZIP_NAME}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: filament-workflows-${{ env.SAFE_REF_NAME }}
+          path: dist/*.zip
+          retention-days: 30
+          if-no-files-found: error

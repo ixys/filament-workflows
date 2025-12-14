@@ -1,226 +1,258 @@
-name: PHP Composer Release
+name: PHP Package - Tests & Release
 
 on:
   push:
-    # build on main (optional) and when pushing tags like v1.2.3
-    branches: [ "main" ]
-    tags: [ 'v*' ]
-  workflow_dispatch: {}
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
-  packages: write
+  packages: write  # nécessaire pour GitHub Packages / GHCR
+
+env:
+  PACKAGE_NAME: "ixys/filament-workflows"
 
 jobs:
-  build-and-release:
-    # Run when a tag is pushed or when manually dispatched
+  tests:
+    name: Run tests (PHP)
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4']
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        persist-credentials: true
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v4
-      with:
-        php-version: '8.4'
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, intl, pdo, pdo_mysql
+          coverage: none
 
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor
+            ~/.composer/cache
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
-
-    - name: Run tests if available
-      run: |
-        if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
-          if composer test >/dev/null 2>&1; then
+      - name: Run tests
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            echo "Running tests with PHPUnit..."
+            vendor/bin/phpunit
+          elif [ -f vendor/bin/pest ]; then
+            echo "Running tests with Pest..."
+            vendor/bin/pest
+          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test\s"; then
+            echo "Running tests with composer test..."
             composer test
-          elif [ -x vendor/bin/phpunit ]; then
-            vendor/bin/phpunit --color=never --stop-on-failure
           else
-            echo "phpunit not found, skipping tests"
+            echo "⚠️ No test configuration found (phpunit, pest, or composer test script)."
+            echo "Skipping tests..."
+            exit 0
           fi
-        else
-          echo "No phpunit config found — skipping tests"
-        fi
 
-    - name: Ensure dist directory
-      run: mkdir -p dist
+  build-package:
+    name: Build package archive
+    runs-on: ubuntu-latest
+    needs: tests
+    if: startsWith(github.ref, 'refs/tags/v')
 
-    - name: Build archive (composer archive)
-      run: composer archive --format=zip --dir=dist
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Show created artifacts
-      run: ls -al dist || true
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl
 
-    - name: Get version from composer.json
-      id: get_version
-      run: |
-        VERSION=$(jq -r .version composer.json)
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Install prod dependencies
+        run: |
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-    - name: Determine tag name to use for release
-      id: determine_tag
-      run: |
-        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-        else
-          TAG_NAME="v${{ steps.get_version.outputs.version }}"
-        fi
-        echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+      - name: Build ZIP artifact
+        run: |
+          mkdir -p dist
+          
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF_NAME#v}
+          ZIP_NAME="filament-workflows-${VERSION}.zip"
 
-    - name: Create tag if workflow_dispatch and no tag present
-      if: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/') }}
-      id: create_tag
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -euo pipefail
-        CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
-        echo "Current branch: $CURRENT_BRANCH"
-        TAG=${{ steps.determine_tag.outputs.tag }}
-        echo "Preparing to create tag $TAG"
+          echo "Creating release package: ${ZIP_NAME}"
 
-        # Check if tag already exists on remote
-        if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
-          echo "Tag $TAG already exists on remote — skipping creation"
-          echo "created_tag=$TAG" >> $GITHUB_OUTPUT
-          exit 0
-        fi
+          # Create archive with production dependencies included
+          zip -r "dist/${ZIP_NAME}" . \
+            -x ".git/*" \
+               ".github/*" \
+               "tests/*" \
+               "dist/*" \
+               "node_modules/*" \
+               ".gitignore" \
+               ".gitattributes" \
+               "*.log"
 
-        # Create annotated tag and push it (uses checkout credentials)
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git tag -a "$TAG" -m "Release $TAG"
-        git push origin "refs/tags/$TAG"
-        echo "created_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+          echo "ZIP_PATH=dist/${ZIP_NAME}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
+          echo "✅ Release package created: dist/${ZIP_NAME}"
+          ls -lh "dist/${ZIP_NAME}"
 
-    - name: Verify archive contents before release
-      run: |
-        set -euo pipefail
-        ZIP_FILE=$(ls dist/*.zip | head -n1)
-        echo "Verifying archive: $ZIP_FILE"
-        echo "Archive file listing:"
-        unzip -l "$ZIP_FILE" || true
+      - name: Upload artifact (workflow only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist/*.zip
+          retention-days: 90
+          if-no-files-found: error
 
-        # Ensure composer.json exists at the archive root
-        if ! unzip -l "$ZIP_FILE" | awk '{print $4}' | grep -E '^composer.json$' >/dev/null 2>&1; then
-          echo "ERROR: composer.json not found in archive" >&2
-          exit 1
-        fi
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-package
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
 
-        # Ensure src/ directory exists inside the archive
-        if ! unzip -l "$ZIP_FILE" | awk '{print $4}' | grep -E '^src/' >/dev/null 2>&1; then
-          echo "ERROR: src/ directory not found in archive" >&2
-          exit 1
-        fi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        echo "Archive verification passed."
+      - name: Prepare artifact name
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
 
-    - name: Generate checksum and optional GPG signature
-      id: certify
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      run: |
-        set -euo pipefail
-        ZIP_FILE=$(ls dist/*.zip | head -n1)
-        echo "Generating SHA256 checksum for $ZIP_FILE"
-        sha256sum "$ZIP_FILE" | awk '{print $1}' > "$ZIP_FILE".sha256
-        echo "Checksum written to $ZIP_FILE.sha256"
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
 
-        # If a GPG private key is provided, create a signature
-        if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
-          echo "Importing GPG key"
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          SIG_FILE="$ZIP_FILE.sig"
-          echo "Signing $ZIP_FILE -> $SIG_FILE"
-          if [ -n "${GPG_PASSPHRASE:-}" ]; then
-            gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" -o "$SIG_FILE" --detach-sign "$ZIP_FILE"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-packagist:
+    name: Notify Packagist
+    runs-on: ubuntu-latest
+    needs: build-package
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Check if Packagist secrets are configured
+        id: check-secrets
+        run: |
+          if [ -n "${{ secrets.PACKAGIST_USERNAME }}" ] && [ -n "${{ secrets.PACKAGIST_API_TOKEN }}" ]; then
+            echo "secrets_available=true" >> $GITHUB_OUTPUT
+            echo "✅ Packagist secrets are configured"
           else
-            gpg --batch --yes -o "$SIG_FILE" --detach-sign "$ZIP_FILE"
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Packagist secrets not configured - skipping Packagist update"
           fi
-          echo "Signature created: $SIG_FILE"
-        else
-          echo "No GPG_PRIVATE_KEY provided — skipping signature"
-        fi
 
-    - name: Create GitHub release and upload artifact
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ steps.determine_tag.outputs.tag }}
-        name: ${{ steps.determine_tag.outputs.tag }}
-        files: |
-          dist/*.zip
-          dist/*.zip.sha256
-          dist/*.zip.sig
-        draft: false
-        prerelease: false
+      - name: Trigger Packagist update
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        run: |
+          echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
 
-    - name: Publish to GitHub Packages (Composer)
-      uses: ./.github/actions/github-packages-publish
-      with:
-        package_zip_path: 'dist/*.zip'
-        # github_token left empty to allow action to use runner's GITHUB_TOKEN by default
-        retries: '3'
-        backoff_seconds: '5'
-        repository_owner: ${{ github.repository_owner }}
-        repository: ${{ github.repository }}
+          # Note: Packagist API specifically requires credentials as query parameters
+          # (not as headers or POST body). GitHub Actions automatically masks these
+          # secrets in all log outputs, making this secure.
+          # See: https://packagist.org/about#how-to-update-packages
+          
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "repository[url]=https://github.com/${{ github.repository }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
+            echo "✅ Packagist updated successfully"
+            echo "$BODY"
+          else
+            echo "⚠️ Packagist update returned HTTP $HTTP_CODE"
+            echo "$BODY"
+            exit 1
+          fi
 
-    - name: Prepare Packagist flag
-      id: packagist_flag
-      env:
-        PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
-        PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
-        PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
-      run: |
-        set -euo pipefail
-        # Determine if Packagist credentials are available
-        packagist_present=false
-        packagist_method=none
-        if [ -n "${PACKAGIST_TOKEN:-}" ]; then
-          packagist_present=true
-          packagist_method=token
-          echo "Detected Packagist auth method: token (using PACKAGIST_TOKEN)"
-        elif [ -n "${PACKAGIST_USERNAME:-}" ] && [ -n "${PACKAGIST_API_TOKEN:-}" ]; then
-          packagist_present=true
-          packagist_method=username_api_token
-          echo "Detected Packagist auth method: username+api_token (using PACKAGIST_USERNAME & PACKAGIST_API_TOKEN)"
-        else
-          echo "No Packagist credentials found; skipping Packagist notification"
-        fi
-        echo "packagist_present=$packagist_present" >> $GITHUB_OUTPUT
-        echo "packagist_method=$packagist_method" >> $GITHUB_OUTPUT
+  publish-github-packages:
+    name: Publish to GitHub Packages (GHCR)
+    runs-on: ubuntu-latest
+    needs: build-package
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      packages: write
 
-    - name: Notify Packagist (using local action)
-      if: ${{ steps.packagist_flag.outputs.packagist_present == 'true' }}
-      uses: ./.github/actions/packagist-update
-      with:
-        token: ${{ secrets.PACKAGIST_TOKEN }}
-        username: ${{ secrets.PACKAGIST_USERNAME }}
-        api_token: ${{ secrets.PACKAGIST_API_TOKEN }}
-        repository: ${{ github.repository }}
+    steps:
+      - name: Prepare artifact name
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "ARTIFACT_NAME=filament-workflows-${VERSION}" >> $GITHUB_ENV
 
-    # NOTE: To replace the local composite action above with an official GitHub Marketplace action:
-    # 1) Find a maintained action that calls packagist.org API (ex: owner/repo@v1) that accepts PACKAGIST_TOKEN or username+apiToken.
-    # 2) Add the secret in the repository (Settings → Secrets) e.g. PACKAGIST_TOKEN or PACKAGIST_USERNAME & PACKAGIST_API_TOKEN.
-    # 3) Replace the step above with e.g.:
-    #    - name: Notify Packagist (official action)
-    #      uses: owner/repo@v1
-    #      with:
-    #        token: ${{ secrets.PACKAGIST_TOKEN }}
-    #        repository: ${{ github.repository }}
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
 
+      - name: Setup ORAS
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.2.2
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io \
+            --username "${{ github.repository_owner }}" \
+            --password-stdin
+
+      - name: Publish package to GHCR
+        run: |
+          ZIP_FILE="$(ls dist/*.zip | head -n1)"
+
+          if [ -z "$ZIP_FILE" ] || [ ! -f "$ZIP_FILE" ]; then
+            echo "❌ No ZIP file found in dist/"
+            exit 1
+          fi
+
+          # Use repository name for package
+          REPO_NAME="${{ github.event.repository.name }}"
+          TAG="${GITHUB_REF_NAME#v}"
+
+          echo "📦 Publishing $ZIP_FILE to ghcr.io/${{ github.repository_owner }}/${REPO_NAME}:${TAG}"
+
+          oras push "ghcr.io/${{ github.repository_owner }}/${REPO_NAME}:${TAG}" \
+            --artifact-type "application/vnd.php.package+zip" \
+            "$ZIP_FILE:application/zip"
+
+          echo "✅ Package published to GitHub Packages"
+          echo "📍 Available at: ghcr.io/${{ github.repository_owner }}/${REPO_NAME}:${TAG}"
