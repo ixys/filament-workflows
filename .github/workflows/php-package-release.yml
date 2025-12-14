@@ -180,10 +180,12 @@ jobs:
         run: |
           echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
 
-          # Use POST with credentials in body to avoid exposure in logs
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "https://packagist.org/api/update-package" \
+          # Create update URL with credentials (GitHub Actions masks secrets in logs)
+          UPDATE_URL="https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}"
+          
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$UPDATE_URL" \
             -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}&repository[url]=https://github.com/${{ github.repository }}")
+            -d "repository[url]=https://github.com/${{ github.repository }}")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
