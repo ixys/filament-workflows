@@ -1,0 +1,96 @@
+name: PHP Package CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - bug/*
+    tags:
+      - 'v*.*.*'
+  pull_request:
+
+jobs:
+  tests:
+    name: Run tests (PHP package)
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, intl, pdo, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist
+
+      - name: Run tests
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit
+          elif grep -q '"test"' composer.json; then
+            composer test
+          else
+            echo "Aucun test défini (phpunit ou script composer test)."
+          fi
+
+  build-package:
+    name: Build package artifact
+    runs-on: ubuntu-latest
+    needs: tests
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Install production dependencies
+        run: |
+          composer install --no-dev --no-interaction --prefer-dist
+
+      - name: Prepare package archive
+        run: |
+          mkdir -p dist
+          ZIP_NAME="php-package-${GITHUB_REF_NAME}.zip"
+
+          # On exclut quelques trucs classiques
+          zip -r "dist/${ZIP_NAME}" . \
+            -x ".git/*" \
+               ".github/*" \
+               "vendor/*" \
+               "dist/*" \
+               "node_modules/*" \
+               "*.log"
+
+          echo "Package généré: dist/${ZIP_NAME}"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-package-${{ github.ref_name }}
+          path: dist/*.zip
+          if-no-files-found: error
