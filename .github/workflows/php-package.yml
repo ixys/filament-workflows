@@ -60,7 +60,7 @@ jobs:
           elif [ -f vendor/bin/pest ]; then
             echo "Running tests with Pest..."
             vendor/bin/pest
-          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test"; then
+          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test\s"; then
             echo "Running tests with composer test..."
             composer test
           else
