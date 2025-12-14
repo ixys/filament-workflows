@@ -1,5 +1,5 @@
 {
-    "name": "monzer/filament-workflows",
+    "name": "ixys/filament-workflows",
     "description": "Automation made easy!",
     "keywords": [
         "filament",
@@ -8,25 +8,26 @@
     ],
     "type": "library",
     "license": "MIT",
-    "version": "0.2.4",
+    "version": "0.3.0",
     "autoload": {
         "psr-4": {
-            "Monzer\\FilamentWorkflows\\": "src"
+            "Ixys\\FilamentWorkflows\\": "src"
         }
     },
     "authors": [
         {
-            "name": "monzer",
-            "email": "monzerosman@live.com"
+            "name": "Julien SIMONCINI",
+            "email": "julien@ixys.dev"
         }
     ],
     "require": {
-        "filament/support": "^3.0"
+        "php": "^8.4",
+        "filament/support": "^4.0"
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Monzer\\FilamentWorkflows\\FilamentWorkflowsServiceProvider"
+                "Ixys\\FilamentWorkflows\\FilamentWorkflowsServiceProvider"
             ]
         }
     },
