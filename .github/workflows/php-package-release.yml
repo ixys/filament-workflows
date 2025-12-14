@@ -66,7 +66,7 @@ jobs:
           elif [ -f vendor/bin/pest ]; then
             echo "Running tests with Pest..."
             vendor/bin/pest
-          elif grep -q '"scripts".*"test"' composer.json; then
+          elif composer show-scripts 2>/dev/null | grep -q "^  test"; then
             echo "Running tests with composer test..."
             composer test
           else
@@ -180,8 +180,10 @@ jobs:
         run: |
           echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
 
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
-            -d "repository[url]=https://github.com/${{ github.repository }}")
+          # Use POST with credentials in body to avoid exposure in logs
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "https://packagist.org/api/update-package" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}&repository[url]=https://github.com/${{ github.repository }}")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
@@ -213,7 +215,7 @@ jobs:
       - name: Setup ORAS
         uses: oras-project/setup-oras@v1
         with:
-          version: 1.2.0
+          version: 1.2.2
 
       - name: Login to GHCR
         run: |
