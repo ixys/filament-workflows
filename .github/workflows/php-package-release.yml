@@ -19,8 +19,6 @@ permissions:
 env:
   PACKAGIST_PACKAGE: "ixys/filament-workflows"
   GHCR_PACKAGE_NAME: "filament-workflows"
-
-env:
   PACKAGE_NAME: "ixys/filament-workflows"
 
 jobs:
