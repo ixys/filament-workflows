@@ -172,6 +172,10 @@ jobs:
 
     - name: Publish to GitHub Packages (Composer)
       uses: ./.github/actions/github-packages-publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PACKAGE_PUBLISH_RETRIES: 3
+        PACKAGE_PUBLISH_BACKOFF: 5
       with:
         package_zip_path: 'dist/*.zip'
         # github_token left empty to allow action to use runner's GITHUB_TOKEN by default
