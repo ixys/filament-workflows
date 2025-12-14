@@ -1,10 +1,10 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Commands;
+namespace Ixys\FilamentWorkflows\Commands;
 
 use Illuminate\Console\Command;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
 
 class CleanupWorkflowLogs extends Command
 {

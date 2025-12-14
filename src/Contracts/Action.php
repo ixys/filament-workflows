@@ -1,9 +1,9 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Contracts;
+namespace Ixys\FilamentWorkflows\Contracts;
 
 use Illuminate\Database\Eloquent\Model;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
 
 abstract class Action
 {

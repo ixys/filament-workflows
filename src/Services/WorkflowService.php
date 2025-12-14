@@ -1,11 +1,11 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Services;
+namespace Ixys\FilamentWorkflows\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Utils\Utils;
 
 class WorkflowService
 {

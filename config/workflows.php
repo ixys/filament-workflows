@@ -2,16 +2,16 @@
 
 return [
     'actions' => [
-        \Monzer\FilamentWorkflows\Actions\SendFilamentNotification::class,
-        \Monzer\FilamentWorkflows\Actions\SendEmail::class,
-        \Monzer\FilamentWorkflows\Actions\SendSmsViaTwilio::class,
-        \Monzer\FilamentWorkflows\Actions\CreateRecord::class,
-        \Monzer\FilamentWorkflows\Actions\UpdateRecord::class,
-        \Monzer\FilamentWorkflows\Actions\SendWebhook::class,
-        \Monzer\FilamentWorkflows\Actions\PushFirebaseNotification::class,
-        \Monzer\FilamentWorkflows\Actions\BackupMySqlDBUsingMySqlDump::class,
-        \Monzer\FilamentWorkflows\Actions\SendWhatsAppMessageViaWassenger::class,
-        \Monzer\FilamentWorkflows\Actions\SendTelegramMessage::class
+        \Ixys\FilamentWorkflows\Actions\SendFilamentNotification::class,
+        \Ixys\FilamentWorkflows\Actions\SendEmail::class,
+        \Ixys\FilamentWorkflows\Actions\SendSmsViaTwilio::class,
+        \Ixys\FilamentWorkflows\Actions\CreateRecord::class,
+        \Ixys\FilamentWorkflows\Actions\UpdateRecord::class,
+        \Ixys\FilamentWorkflows\Actions\SendWebhook::class,
+        \Ixys\FilamentWorkflows\Actions\PushFirebaseNotification::class,
+        \Ixys\FilamentWorkflows\Actions\BackupMySqlDBUsingMySqlDump::class,
+        \Ixys\FilamentWorkflows\Actions\SendWhatsAppMessageViaWassenger::class,
+        \Ixys\FilamentWorkflows\Actions\SendTelegramMessage::class
     ],
     //scan the following directories for models
     'models_directory' => [

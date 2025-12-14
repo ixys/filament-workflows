@@ -1,10 +1,10 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
+namespace Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
 
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 use Filament\Forms\Components\Section;
-use Monzer\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Models\Workflow;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Resources\Pages\Page;

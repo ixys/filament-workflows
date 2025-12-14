@@ -1,11 +1,11 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
+namespace Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
 
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Validation\ValidationException;
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 
 class CreateWorkflow extends CreateRecord
 {

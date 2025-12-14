@@ -1,11 +1,11 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Listeners;
+namespace Ixys\FilamentWorkflows\Listeners;
 
 use Illuminate\Events\Dispatcher;
-use Monzer\FilamentWorkflows\Jobs\ExecuteCustomEventWorkflow;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Jobs\ExecuteCustomEventWorkflow;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Utils\Utils;
 
 class WorkflowEventSubscriber
 {

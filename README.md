@@ -36,19 +36,19 @@ Ensure your Laravel application meets the following requirements:
 ### 📥 Install the Package
 
 ```bash
-composer require monzer/filament-workflows
+composer require ixys/filament-workflows
 ```
 
 ### ⚡ Publish Migration
 
 ```bash
-php artisan vendor:publish --provider="Monzer\FilamentWorkflows\FilamentWorkflowsServiceProvider" --tag="migrations"
+php artisan vendor:publish --provider="Ixys\FilamentWorkflows\FilamentWorkflowsServiceProvider" --tag="migrations"
 ```
 
 ### ⚡ Publish Configuration (Optional)
 
 ```bash
-php artisan vendor:publish --provider="Monzer\FilamentWorkflows\FilamentWorkflowsServiceProvider" --tag="config"
+php artisan vendor:publish --provider="Ixys\FilamentWorkflows\FilamentWorkflowsServiceProvider" --tag="config"
 ```
 
 ### 📊 Migrate Database
@@ -63,7 +63,7 @@ Users must manually register the plugin in their `PanelProvider.php`:
 
 ```php
 use Filament\Facades\Filament;
-use Monzer\FilamentWorkflows\WorkflowsPlugin;
+use Ixys\FilamentWorkflows\WorkflowsPlugin;
 
 public function panel(Panel $panel): Panel
 {
@@ -77,7 +77,7 @@ public function panel(Panel $panel): Panel
 To integrate a model with the model event workflow system, the model must implement the following trait:
 
 ```php
-use Monzer\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
+use Ixys\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
 
 class Order extends Model
 {
@@ -88,7 +88,7 @@ class Order extends Model
 To change the model display name you can use the getModelName() static function:
 
 ```php
-use Monzer\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
+use Ixys\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
 
 class Order extends Model
 {
@@ -104,7 +104,7 @@ class Order extends Model
 To change the attributes display name you can use the getAttributeName() static function:
 
 ```php
-use Monzer\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
+use Ixys\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
 
 class Order extends Model
 {
@@ -136,16 +136,16 @@ Example configuration in `config/workflows.php`:
 ```php
 return [
     'actions' => [
-        \Monzer\FilamentWorkflows\Actions\SendFilamentNotification::class,
-        \Monzer\FilamentWorkflows\Actions\SendEmail::class,
-        \Monzer\FilamentWorkflows\Actions\SendSmsViaTwilio::class,
-        \Monzer\FilamentWorkflows\Actions\CreateRecord::class,
-        \Monzer\FilamentWorkflows\Actions\UpdateRecord::class,
-        \Monzer\FilamentWorkflows\Actions\SendWebhook::class,
-        \Monzer\FilamentWorkflows\Actions\PushFirebaseNotification::class,
-        \Monzer\FilamentWorkflows\Actions\BackupMySqlDBUsingMySqlDump::class,
-        \Monzer\FilamentWorkflows\Actions\SendWhatsAppMessageViaWassenger::class,
-        \Monzer\FilamentWorkflows\Actions\SendTelegramMessage::class
+        \Ixys\FilamentWorkflows\Actions\SendFilamentNotification::class,
+        \Ixys\FilamentWorkflows\Actions\SendEmail::class,
+        \Ixys\FilamentWorkflows\Actions\SendSmsViaTwilio::class,
+        \Ixys\FilamentWorkflows\Actions\CreateRecord::class,
+        \Ixys\FilamentWorkflows\Actions\UpdateRecord::class,
+        \Ixys\FilamentWorkflows\Actions\SendWebhook::class,
+        \Ixys\FilamentWorkflows\Actions\PushFirebaseNotification::class,
+        \Ixys\FilamentWorkflows\Actions\BackupMySqlDBUsingMySqlDump::class,
+        \Ixys\FilamentWorkflows\Actions\SendWhatsAppMessageViaWassenger::class,
+        \Ixys\FilamentWorkflows\Actions\SendTelegramMessage::class
     ],
     //scan the following directories for models
     'models_directory' => [
@@ -231,7 +231,7 @@ php artisan workflows:cleanup-logs --dry-run
 For existing installations that experience database errors due to large logs, run the optional migration to increase column size:
 
 ```bash
-php artisan migrate --path=vendor/monzer/filament-workflows/database/migrations/2024_01_01_000000_update_workflows_logs_column_size.php
+php artisan migrate --path=vendor/ixys/filament-workflows/database/migrations/2024_01_01_000000_update_workflows_logs_column_size.php
 ```
 
 ## 🪄 Magic Attributes
@@ -269,14 +269,14 @@ Users can create custom actions by implementing the `Action` interface. Below is
 *SendEmail** action:
 
 ```php
-namespace Monzer\FilamentWorkflows\Actions;
+namespace Ixys\FilamentWorkflows\Actions;
 
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
 
 class SendEmail extends Action
 {
@@ -345,7 +345,7 @@ Then add your custom action
 
 ```php
 use Filament\Facades\Filament;
-use Monzer\FilamentWorkflows\WorkflowsPlugin;
+use Ixys\FilamentWorkflows\WorkflowsPlugin;
 
 public function panel(Panel $panel): Panel
 {
@@ -414,7 +414,7 @@ Create a middleware to setup tenancy
 
 namespace App\Http\Middleware;
 
-use Monzer\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Models\Workflow;
 
 class ApplyTenantScopes
 {
@@ -437,7 +437,7 @@ Then, add the middleware to the panel
 
 ```php
 use Filament\Facades\Filament;
-use Monzer\FilamentWorkflows\WorkflowsPlugin;
+use Ixys\FilamentWorkflows\WorkflowsPlugin;
 
 public function panel(Panel $panel): Panel
 {
@@ -457,7 +457,7 @@ tests to ensure workflow stability and execution accuracy.
 
 ## ❤️ Support & Contributions
 
-For issues and feature requests, please visit the [GitHub repository](https://github.com/monzer15/filament-workflows) and
+For issues and feature requests, please visit the [GitHub repository](https://github.com/ixys/filament-workflows) and
 create an issue.
 
 Pull requests are welcome. Make sure to follow the contribution guidelines.
@@ -466,7 +466,7 @@ Pull requests are welcome. Make sure to follow the contribution guidelines.
 
 If you find this package helpful and would like to support its development, consider making a donation:
 
-[☕ Buy Me a Coffee](https://paypal.me/monzer15)
+[☕ Buy Me a Coffee](https://buymeacoffee.com/ixys)
 
 Your support helps improve and maintain this package! 🙌
 

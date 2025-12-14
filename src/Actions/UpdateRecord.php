@@ -1,14 +1,14 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Actions;
+namespace Ixys\FilamentWorkflows\Actions;
 
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Illuminate\Database\Eloquent\Model;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Utils\Utils;
 
 class UpdateRecord extends Action
 {

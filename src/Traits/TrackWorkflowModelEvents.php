@@ -1,9 +1,9 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Traits;
+namespace Ixys\FilamentWorkflows\Traits;
 
 use Illuminate\Database\Eloquent\Model;
-use Monzer\FilamentWorkflows\Jobs\PrepareModelEventForWorkflow;
+use Ixys\FilamentWorkflows\Jobs\PrepareModelEventForWorkflow;
 
 trait TrackWorkflowModelEvents
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Monzer\FilamentWorkflows;
+namespace Ixys\FilamentWorkflows;
 
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 use Filament\Support\Concerns\EvaluatesClosures;
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 
 class WorkflowsPlugin implements Plugin
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Models;
+namespace Ixys\FilamentWorkflows\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

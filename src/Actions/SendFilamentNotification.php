@@ -1,6 +1,6 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Actions;
+namespace Ixys\FilamentWorkflows\Actions;
 
 use App\Models\User;
 use Filament\Forms\Components\Checkbox;
@@ -13,9 +13,9 @@ use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Utils\Utils;
 
 class SendFilamentNotification extends Action
 {

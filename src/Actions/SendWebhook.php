@@ -1,13 +1,13 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Actions;
+namespace Ixys\FilamentWorkflows\Actions;
 
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Illuminate\Database\Eloquent\Model;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
 
 class SendWebhook extends Action
 {

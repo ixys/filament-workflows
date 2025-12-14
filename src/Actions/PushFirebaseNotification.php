@@ -1,6 +1,6 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Actions;
+namespace Ixys\FilamentWorkflows\Actions;
 
 use App\Models\User;
 use Filament\Forms\Components\Hidden;
@@ -15,8 +15,8 @@ use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Str;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\WorkflowActionExecution;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\WorkflowActionExecution;
 
 class PushFirebaseNotification extends Action
 {

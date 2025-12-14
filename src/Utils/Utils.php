@@ -1,6 +1,6 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Utils;
+namespace Ixys\FilamentWorkflows\Utils;
 
 use Composer\InstalledVersions;
 use Filament\Forms\Components\Component;
@@ -10,9 +10,9 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Monzer\FilamentWorkflows\Contracts\Action;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
+use Ixys\FilamentWorkflows\Contracts\Action;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Traits\TrackWorkflowModelEvents;
 
 class Utils
 {

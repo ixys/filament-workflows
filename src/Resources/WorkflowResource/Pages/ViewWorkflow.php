@@ -1,8 +1,8 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
+namespace Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
 
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;

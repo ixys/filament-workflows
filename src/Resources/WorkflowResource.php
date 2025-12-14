@@ -1,15 +1,15 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources;
+namespace Ixys\FilamentWorkflows\Resources;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Support\HtmlString;
-use Monzer\FilamentWorkflows;
-use Monzer\FilamentWorkflows\Jobs\ExecuteModelEventWorkflow;
-use Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows;
+use Ixys\FilamentWorkflows\Jobs\ExecuteModelEventWorkflow;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
+use Ixys\FilamentWorkflows\Utils\Utils;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

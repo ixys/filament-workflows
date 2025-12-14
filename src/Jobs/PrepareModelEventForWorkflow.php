@@ -1,6 +1,6 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Jobs;
+namespace Ixys\FilamentWorkflows\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -9,8 +9,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Utils\Utils;
 
 class PrepareModelEventForWorkflow implements ShouldQueue
 {

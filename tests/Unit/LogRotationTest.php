@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Utils\Utils;
 use Orchestra\Testbench\TestCase;
 use Illuminate\Support\Facades\Config;
 
@@ -15,7 +15,7 @@ class LogRotationTest extends TestCase
     protected function getPackageProviders($app)
     {
         return [
-            \Monzer\FilamentWorkflows\FilamentWorkflowsServiceProvider::class,
+            \Ixys\FilamentWorkflows\FilamentWorkflowsServiceProvider::class,
         ];
     }
     

@@ -1,15 +1,15 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
+namespace Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
 
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Models\WorkflowGroup;
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Models\WorkflowGroup;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 use Filament\Resources\Pages\ListRecords;
 
 class ListWorkflows extends ListRecords

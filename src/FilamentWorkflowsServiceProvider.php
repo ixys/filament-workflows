@@ -1,16 +1,16 @@
 <?php
 
-namespace Monzer\FilamentWorkflows;
+namespace Ixys\FilamentWorkflows;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-use Monzer\FilamentWorkflows\Jobs\ExecuteScheduledWorkflow;
-use Monzer\FilamentWorkflows\Listeners\WorkflowEventSubscriber;
-use Monzer\FilamentWorkflows\Models\Workflow;
-use Monzer\FilamentWorkflows\Utils\Utils;
-use Monzer\FilamentWorkflows\Commands\CleanupWorkflowLogs;
+use Ixys\FilamentWorkflows\Jobs\ExecuteScheduledWorkflow;
+use Ixys\FilamentWorkflows\Listeners\WorkflowEventSubscriber;
+use Ixys\FilamentWorkflows\Models\Workflow;
+use Ixys\FilamentWorkflows\Utils\Utils;
+use Ixys\FilamentWorkflows\Commands\CleanupWorkflowLogs;
 
 class FilamentWorkflowsServiceProvider extends ServiceProvider
 {

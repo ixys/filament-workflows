@@ -1,11 +1,11 @@
 <?php
 
-namespace Monzer\FilamentWorkflows\Resources\WorkflowResource\Pages;
+namespace Ixys\FilamentWorkflows\Resources\WorkflowResource\Pages;
 
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Validation\ValidationException;
-use Monzer\FilamentWorkflows\Resources\WorkflowResource;
+use Ixys\FilamentWorkflows\Resources\WorkflowResource;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
