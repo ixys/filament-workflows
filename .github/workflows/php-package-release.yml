@@ -66,7 +66,7 @@ jobs:
           elif [ -f vendor/bin/pest ]; then
             echo "Running tests with Pest..."
             vendor/bin/pest
-          elif composer show-scripts 2>/dev/null | grep -q "^  test"; then
+          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test"; then
             echo "Running tests with composer test..."
             composer test
           else
@@ -186,7 +186,8 @@ jobs:
         run: |
           echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
 
-          # Create update URL with credentials (GitHub Actions masks secrets in logs)
+          # Packagist API requires username and apiToken as query parameters
+          # GitHub Actions automatically masks secrets in logs for security
           UPDATE_URL="https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}"
           
           RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$UPDATE_URL" \
