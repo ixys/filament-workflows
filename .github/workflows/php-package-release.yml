@@ -1,0 +1,249 @@
+name: PHP Composer Release
+
+on:
+  push:
+    # build on main (optional) and when pushing tags like v1.2.3
+    branches: [ "main" ]
+    tags: [ 'v*' ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    # Run when a tag is pushed or when manually dispatched
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: true
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v4
+      with:
+        php-version: '8.4'
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Run tests if available
+      run: |
+        if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
+          if composer test >/dev/null 2>&1; then
+            composer test
+          elif [ -x vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --color=never --stop-on-failure
+          else
+            echo "phpunit not found, skipping tests"
+          fi
+        else
+          echo "No phpunit config found — skipping tests"
+        fi
+
+    - name: Ensure dist directory
+      run: mkdir -p dist
+
+    - name: Build archive (composer archive)
+      run: composer archive --format=zip --dir=dist
+
+    - name: Show created artifacts
+      run: ls -al dist || true
+
+    - name: Get version from composer.json
+      id: get_version
+      run: |
+        VERSION=$(jq -r .version composer.json)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Determine tag name to use for release
+      id: determine_tag
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+        else
+          TAG_NAME="v${{ steps.get_version.outputs.version }}"
+        fi
+        echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+    - name: Create tag if workflow_dispatch and no tag present
+      if: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/') }}
+      id: create_tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+        echo "Current branch: $CURRENT_BRANCH"
+        TAG=${{ steps.determine_tag.outputs.tag }}
+        echo "Preparing to create tag $TAG"
+
+        # Check if tag already exists on remote
+        if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
+          echo "Tag $TAG already exists on remote — skipping creation"
+          echo "created_tag=$TAG" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Create annotated tag and push it (uses checkout credentials)
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag -a "$TAG" -m "Release $TAG"
+        git push origin "refs/tags/$TAG"
+        echo "created_tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Verify archive contents before release
+      run: |
+        set -euo pipefail
+        ZIP_FILE=$(ls dist/*.zip | head -n1)
+        echo "Verifying archive: $ZIP_FILE"
+        echo "Archive file listing:"
+        unzip -l "$ZIP_FILE" || true
+
+        # Ensure composer.json exists at the archive root
+        if ! unzip -l "$ZIP_FILE" | awk '{print $4}' | grep -E '^composer.json$' >/dev/null 2>&1; then
+          echo "ERROR: composer.json not found in archive" >&2
+          exit 1
+        fi
+
+        # Ensure src/ directory exists inside the archive
+        if ! unzip -l "$ZIP_FILE" | awk '{print $4}' | grep -E '^src/' >/dev/null 2>&1; then
+          echo "ERROR: src/ directory not found in archive" >&2
+          exit 1
+        fi
+
+        echo "Archive verification passed."
+
+    - name: Generate checksum and optional GPG signature
+      id: certify
+      env:
+        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      run: |
+        set -euo pipefail
+        ZIP_FILE=$(ls dist/*.zip | head -n1)
+        echo "Generating SHA256 checksum for $ZIP_FILE"
+        sha256sum "$ZIP_FILE" | awk '{print $1}' > "$ZIP_FILE".sha256
+        echo "Checksum written to $ZIP_FILE.sha256"
+
+        # If a GPG private key is provided, create a signature
+        if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+          echo "Importing GPG key"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          SIG_FILE="$ZIP_FILE.sig"
+          echo "Signing $ZIP_FILE -> $SIG_FILE"
+          if [ -n "${GPG_PASSPHRASE:-}" ]; then
+            gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" -o "$SIG_FILE" --detach-sign "$ZIP_FILE"
+          else
+            gpg --batch --yes -o "$SIG_FILE" --detach-sign "$ZIP_FILE"
+          fi
+          echo "Signature created: $SIG_FILE"
+        else
+          echo "No GPG_PRIVATE_KEY provided — skipping signature"
+        fi
+
+    - name: Create GitHub release and upload artifact
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ steps.determine_tag.outputs.tag }}
+        name: ${{ steps.determine_tag.outputs.tag }}
+        files: |
+          dist/*.zip
+          dist/*.zip.sha256
+          dist/*.zip.sig
+        draft: false
+        prerelease: false
+
+    - name: Publish to GitHub Packages (Composer)
+      if: always()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        ZIP_FILE=$(ls dist/*.zip | head -n1)
+        if [ -z "$ZIP_FILE" ]; then
+          echo "No archive found to publish to GitHub Packages" >&2
+          exit 1
+        fi
+
+        PACKAGE_NAME=$(jq -r .name composer.json)
+        PACKAGE_VERSION=$(jq -r .version composer.json)
+        PACKAGE_DESC=$(jq -r .description composer.json // empty)
+        OWNER=${GITHUB_REPOSITORY_OWNER}
+
+        echo "Preparing metadata for package $PACKAGE_NAME@$PACKAGE_VERSION"
+        cat > /tmp/metadata.json <<EOF
+        {
+          "name": "$PACKAGE_NAME",
+          "package_type": "composer",
+          "version": "$PACKAGE_VERSION",
+          "description": "$PACKAGE_DESC"
+        }
+        EOF
+
+        # URL-encode package name for path
+        ENCODED_NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read().strip(), safe=''))" <<< "$PACKAGE_NAME")
+
+        # Detect owner type (Organization or User)
+        OWNER_INFO=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/users/$OWNER")
+        OWNER_TYPE=$(echo "$OWNER_INFO" | jq -r .type // "User")
+        echo "Repository owner: $OWNER (type: $OWNER_TYPE)"
+
+        if [ "$OWNER_TYPE" = "Organization" ]; then
+          API_URL="https://api.github.com/orgs/$OWNER/packages/composer/$ENCODED_NAME/versions"
+        else
+          API_URL="https://api.github.com/user/packages/composer/$ENCODED_NAME/versions"
+        fi
+
+        echo "Uploading package to $API_URL"
+
+        HTTP_STATUS=$(curl -s -o /tmp/ghpkg_resp.txt -w "%{http_code}" -X POST \
+          -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          -F "metadata=@/tmp/metadata.json;type=application/json" \
+          -F "package=@$ZIP_FILE;type=application/zip" \
+          "$API_URL")
+
+        echo "GitHub Packages response (status $HTTP_STATUS):"
+        cat /tmp/ghpkg_resp.txt || true
+        if [ "$HTTP_STATUS" -ge 400 ]; then
+          echo "Publish to GitHub Packages failed with HTTP status $HTTP_STATUS" >&2
+          exit 1
+        fi
+
+        echo "Published $PACKAGE_NAME@$PACKAGE_VERSION to GitHub Packages successfully."
+
+    - name: Notify Packagist (using local action)
+      if: ${{ secrets.PACKAGIST_USERNAME != '' && secrets.PACKAGIST_API_TOKEN != '' }}
+      uses: ./.github/actions/packagist-update
+      with:
+        username: ${{ secrets.PACKAGIST_USERNAME }}
+        api_token: ${{ secrets.PACKAGIST_API_TOKEN }}
+        repository: ${{ github.repository }}
+
+    # NOTE: To replace the local composite action above with an official GitHub Marketplace action:
+    # 1) Find a maintained action that calls packagist.org API (ex: owner/repo@v1) that accepts PACKAGIST_TOKEN or username+apiToken.
+    # 2) Add the secret in the repository (Settings → Secrets) e.g. PACKAGIST_TOKEN or PACKAGIST_USERNAME & PACKAGIST_API_TOKEN.
+    # 3) Replace the step above with e.g.:
+    #    - name: Notify Packagist (official action)
+    #      uses: owner/repo@v1
+    #      with:
+    #        token: ${{ secrets.PACKAGIST_TOKEN }}
+    #        repository: ${{ github.repository }}
+
