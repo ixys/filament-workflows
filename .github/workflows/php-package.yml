@@ -9,6 +9,7 @@ on:
     tags:
       - 'v*.*.*'
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -38,23 +39,35 @@ jobs:
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
-          path: vendor
+          path: |
+            vendor
+            ~/.composer/cache
           key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
       - name: Install dependencies
         run: |
-          composer install --no-interaction --prefer-dist
+          composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Run tests
         run: |
           if [ -f vendor/bin/phpunit ]; then
+            echo "Running tests with PHPUnit..."
             vendor/bin/phpunit
-          elif grep -q '"test"' composer.json; then
+          elif [ -f vendor/bin/pest ]; then
+            echo "Running tests with Pest..."
+            vendor/bin/pest
+          elif composer show-scripts 2>/dev/null | grep -qE "^\s*test\s"; then
+            echo "Running tests with composer test..."
             composer test
           else
-            echo "Aucun test défini (phpunit ou script composer test)."
+            echo "⚠️ No test configuration found (phpunit, pest, or composer test script)."
+            echo "Skipping tests..."
+            exit 0
           fi
 
   build-package:
@@ -70,30 +83,41 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: mbstring, intl
 
       - name: Install production dependencies
         run: |
-          composer install --no-dev --no-interaction --prefer-dist
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Prepare package archive
         run: |
           mkdir -p dist
-          ZIP_NAME="php-package-${GITHUB_REF_NAME}.zip"
+          
+          # Sanitize ref name for use in filenames (replace invalid characters)
+          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/[\/:]/-/g' | sed 's/[*?<>|]/_/g')
+          echo "SAFE_REF_NAME=${SAFE_REF_NAME}" >> $GITHUB_ENV
+          ZIP_NAME="filament-workflows-${SAFE_REF_NAME}.zip"
+          
+          echo "Creating package: ${ZIP_NAME}"
 
-          # On exclut quelques trucs classiques
+          # Create archive with production dependencies included
           zip -r "dist/${ZIP_NAME}" . \
             -x ".git/*" \
                ".github/*" \
-               "vendor/*" \
+               "tests/*" \
                "dist/*" \
                "node_modules/*" \
+               ".gitignore" \
+               ".gitattributes" \
                "*.log"
 
-          echo "Package généré: dist/${ZIP_NAME}"
+          echo "✅ Package created: dist/${ZIP_NAME}"
+          ls -lh "dist/${ZIP_NAME}"
 
-      - name: Upload package artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: php-package-${{ github.ref_name }}
+          name: filament-workflows-${{ env.SAFE_REF_NAME }}
           path: dist/*.zip
+          retention-days: 30
           if-no-files-found: error
