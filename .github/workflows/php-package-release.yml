@@ -8,8 +8,9 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
   packages: write
+  actions: write
 
 jobs:
   build-and-release:
@@ -142,6 +143,8 @@ jobs:
         sha256sum "$ZIP_FILE" | awk '{print $1}' > "$ZIP_FILE".sha256
         echo "Checksum written to $ZIP_FILE.sha256"
 
+        SIG_CREATED=false
+        SIG_FILE=""
         # If a GPG private key is provided, create a signature
         if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
           echo "Importing GPG key"
@@ -154,19 +157,48 @@ jobs:
             gpg --batch --yes -o "$SIG_FILE" --detach-sign "$ZIP_FILE"
           fi
           echo "Signature created: $SIG_FILE"
+          SIG_CREATED=true
         else
           echo "No GPG_PRIVATE_KEY provided — skipping signature"
         fi
 
-    - name: Create GitHub release and upload artifact
+        # Export outputs for later steps
+        echo "zip_file=$ZIP_FILE" >> $GITHUB_OUTPUT
+        echo "sha_file=$ZIP_FILE.sha256" >> $GITHUB_OUTPUT
+        echo "sig_file=$SIG_FILE" >> $GITHUB_OUTPUT
+        echo "sig_created=$SIG_CREATED" >> $GITHUB_OUTPUT
+
+    - name: Upload release artifact: package zip
+      uses: actions/upload-artifact@v3
+      with:
+        name: package-zip
+        path: ${{ steps.certify.outputs.zip_file }}
+
+    - name: Upload release artifact: checksum
+      uses: actions/upload-artifact@v3
+      with:
+        name: package-sha256
+        path: ${{ steps.certify.outputs.sha_file }}
+
+    - name: Upload release artifact: signature (if created)
+      if: ${{ steps.certify.outputs.sig_created == 'true' }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: package-sig
+        path: ${{ steps.certify.outputs.sig_file }}
+
+    - name: Create or update GitHub release and attach artifacts
       uses: ncipollo/release-action@v1
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ steps.determine_tag.outputs.tag }}
         name: ${{ steps.determine_tag.outputs.tag }}
-        files: |
-          dist/*.zip
-          dist/*.zip.sha256
-          dist/*.zip.sig
+        artifacts: |
+          package-zip
+          package-sha256
+          package-sig
+        allowUpdates: true
+        artifactErrorsFailBuild: false
         draft: false
         prerelease: false
 
