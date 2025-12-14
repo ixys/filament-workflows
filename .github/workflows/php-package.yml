@@ -92,8 +92,9 @@ jobs:
         run: |
           mkdir -p dist
           
-          # Sanitize ref name for use in filenames (replace / with -)
-          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/\//-/g')
+          # Sanitize ref name for use in filenames (replace invalid characters)
+          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/[\/:]/-/g' | sed 's/[*?<>|]/_/g')
+          echo "SAFE_REF_NAME=${SAFE_REF_NAME}" >> $GITHUB_ENV
           ZIP_NAME="filament-workflows-${SAFE_REF_NAME}.zip"
           
           echo "Creating package: ${ZIP_NAME}"
@@ -111,12 +112,6 @@ jobs:
 
           echo "✅ Package created: dist/${ZIP_NAME}"
           ls -lh "dist/${ZIP_NAME}"
-
-      - name: Upload package artifact
-        run: |
-          # Sanitize ref name for artifact name
-          SAFE_REF_NAME=$(echo "${GITHUB_REF_NAME}" | sed 's/\//-/g')
-          echo "SAFE_REF_NAME=${SAFE_REF_NAME}" >> $GITHUB_ENV
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

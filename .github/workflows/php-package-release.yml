@@ -159,7 +159,7 @@ jobs:
           files: dist/*.zip
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -186,11 +186,13 @@ jobs:
         run: |
           echo "Updating Packagist for ${{ env.PACKAGE_NAME }}..."
 
-          # Packagist API requires username and apiToken as query parameters
-          # GitHub Actions automatically masks secrets in logs for security
-          UPDATE_URL="https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}"
+          # Note: Packagist API specifically requires credentials as query parameters
+          # (not as headers or POST body). GitHub Actions automatically masks these
+          # secrets in all log outputs, making this secure.
+          # See: https://packagist.org/about#how-to-update-packages
           
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$UPDATE_URL" \
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "repository[url]=https://github.com/${{ github.repository }}")
           
