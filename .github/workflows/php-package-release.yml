@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   actions: write
 
@@ -70,7 +70,12 @@ jobs:
     - name: Get version from composer.json
       id: get_version
       run: |
-        VERSION=$(jq -r .version composer.json)
+        # Try to read version from composer.json; fallback to git short sha if absent
+        VERSION=$(jq -r '.version // ""' composer.json 2>/dev/null || echo "")
+        if [ -z "$VERSION" ]; then
+          echo "No version in composer.json — using git short SHA as fallback"
+          VERSION=$(git rev-parse --short HEAD)
+        fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Determine tag name to use for release
@@ -169,20 +174,20 @@ jobs:
         echo "sig_created=$SIG_CREATED" >> $GITHUB_OUTPUT
 
     - name: Upload release artifact (package zip)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package-zip
         path: ${{ steps.certify.outputs.zip_file }}
 
     - name: Upload release artifact (checksum)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package-sha256
         path: ${{ steps.certify.outputs.sha_file }}
 
     - name: Upload release artifact (signature if created)
       if: ${{ steps.certify.outputs.sig_created == 'true' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: package-sig
         path: ${{ steps.certify.outputs.sig_file }}
